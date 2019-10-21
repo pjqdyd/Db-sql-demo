@@ -228,12 +228,29 @@ WHERE s_id IN
 11.查询没有学全所有课的学生的学号、姓名
 
 ```
+SELECT st.*, sc.*
+FROM student AS st
+LEFT JOIN score AS sc ON st.s_id=sc.s_id
+GROUP BY st.s_id
+HAVING COUNT(DISTINCT sc.c_id) < (SELECT COUNT(DISTINCT c_id) FROM course);
 
 ```
 <br>
 12、查询至少有一门课与学号为“01”的学生所学课程相同的学生的学号和姓名
 
+```
+SELECT DISTINCT st.* 
+FROM student st INNER JOIN score sc ON st.s_id=sc.s_id
+WHERE sc.c_id IN
+(SELECT c_id FROM score WHERE s_id='01') AND st.s_id != '01';
+
+```
+
 13.查询和“01”号同学所学课程完全相同的其他同学的学号
+
+```
+
+```
 
 14、查询没学过"张三"老师讲授的任一门课程的学生姓名 和47题一样
 
