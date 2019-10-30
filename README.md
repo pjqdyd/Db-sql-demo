@@ -281,7 +281,22 @@ WHERE st.s_id NOT IN (
 
 15、查询两门及其以上不及格课程的同学的学号，姓名及其平均成绩
 
+```
+SELECT st.s_id, st.s_name, AVG(sc.s_score) FROM student st
+INNER JOIN score sc ON st.s_id=sc.s_id
+WHERE st.s_id IN (
+	SELECT s_id FROM score
+	WHERE s_score<60
+	GROUP BY s_id
+	HAVING COUNT(DISTINCT c_id)>=2
+)
+GROUP BY st.s_id, st.s_name;
+```
+
 16、检索"01"课程分数小于60，按分数降序排列的学生信息
+
+```
+```
 
 17、按平均成绩从高到低显示所有学生的所有课程的成绩以及平均成绩
 
