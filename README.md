@@ -249,10 +249,35 @@ WHERE sc.c_id IN
 13.查询和“01”号同学所学课程完全相同的其他同学的学号
 
 ```
-
+/*第一步是查出和01号同学(不包括自己)所学课程数相同的学生id*/
+/*第二步是查出至少有一门课程和01号同学不同的学生id*/
+/*最后AND两个条件, 表示课程数相等,且学的课程相同即为完全相同*/
+SELECT * FROM student
+WHERE s_id IN (
+	SELECT s_id FROM score
+	WHERE s_id != '01'
+	GROUP BY s_id
+	HAVING COUNT(DISTINCT c_id)=(SELECT COUNT(DISTINCT c_id) FROM score where s_id='01')
+)
+AND s_id NOT IN (
+	SELECT DISTINCT s_id FROM score
+	WHERE c_id NOT IN (
+		SELECT sc.c_id 
+		FROM score sc WHERE sc.s_id='01'
+	)
+);
 ```
 
-14、查询没学过"张三"老师讲授的任一门课程的学生姓名 和47题一样
+14、查询没学过"张三"老师讲授的任一门课程的学生姓名
+
+```
+SELECT * FROM student st
+WHERE st.s_id NOT IN (
+	SELECT s.s_id FROM score s
+	INNER JOIN course c ON s.c_id=c.c_id
+	INNER JOIN teacher t ON t.t_id=c.t_id AND t.t_name='张三'
+);
+```
 
 15、查询两门及其以上不及格课程的同学的学号，姓名及其平均成绩
 
