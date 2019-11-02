@@ -10,7 +10,9 @@
 完成;
 
 表结构关系:
-![](https://pic1.zhimg.com/80/v2-86fd263583a6cead51675982c1735e68_hd.jpg)
+<div style="width: 500px; height: 260px;">
+	<image src="https://pic1.zhimg.com/80/v2-86fd263583a6cead51675982c1735e68_hd.jpg" />
+</div>
 
 
 二. 建表语句:
@@ -399,30 +401,150 @@ ORDER BY avg_score DESC;
 22、查询所有课程的成绩第2名到第3名的学生信息及该课程成绩
 
 ```
+SELECT * FROM
+	(SELECT 
+	st.*,
+	sc.s_score ,
+	row_number() OVER(partition BY sc.c_id ORDER BY sc.s_score DESC) num
+	FROM student st 
+	INNER JOIN score sc ON st.s_id=sc.s_id) a
+WHERE num IN (2, 3);
 
+/**结果**/
+s_id s_name   s_birth  s_sex s_score  num
+03	 孙风	1990-05-20	男	 	80		2
+05	 周梅	1991-12-01	女	    76		3
+07	 郑竹	1989-07-01	女	 	89		2
+05	 周梅	1991-12-01	女	 	87		3
+07	 郑竹	1989-07-01	女	 	98		2
+02 	 钱电	1990-12-21	男	 	80		3
 ```
 
 23、使用分段[100-85],[85-70],[70-60],[<60]来统计各科成绩，分别统计各分数段人数：课程ID和课程名称
 
+```
+SELECT 
+c.c_id, 
+c.c_name,
+SUM(CASE WHEN sc.s_score<=100 AND sc.s_score>85 THEN 1 ELSE 0 END) "[100-85分]",
+COUNT(CASE WHEN sc.s_score<=85 AND sc.s_score>70 THEN 1 ELSE null END) "[85-70分]",
+COUNT(CASE WHEN sc.s_score<=70 AND sc.s_score>60 THEN 1 ELSE null END) "[70-60分]",
+COUNT(CASE WHEN sc.s_score<=60 THEN 1 ELSE null END) "[<60分]"
+FROM score sc
+INNER JOIN course c ON sc.c_id=c.c_id
+GROUP BY c.c_id, c.c_name;
+```
+
 24、查询学生平均成绩及其名次
+
+```
+SELECT 
+st.s_id, 
+st.s_name, 
+AVG(sc.s_score),
+row_number() OVER(ORDER BY AVG(sc.s_score) DESC) "排名"
+FROM student st
+INNER JOIN score sc ON st.s_id=sc.s_id
+GROUP BY st.s_id, st.s_name;
+```
 
 25、查询各科成绩前三名的记录（不考虑成绩并列情况）
 
+```
+SELECT * FROM
+	(SELECT 
+	st.s_id, 
+	st.s_name,
+	sc.c_id, 
+	sc.s_score,
+	row_number() OVER(partition BY sc.c_id ORDER BY sc.s_score DESC) num
+	FROM student st
+	INNER JOIN score sc ON st.s_id=sc.s_id) a 
+WHERE num <=3;
+```
+
 26、查询每门课程被选修的学生数
+
+```
+SELECT c.c_id, c.c_name, COUNT(DISTINCT sc.s_id) 
+FROM course c 
+INNER JOIN score sc ON c.c_id=sc.c_id
+GROUP BY c.c_id, c.c_name;
+```
 
 27、 查询出只有两门课程的全部学生的学号和姓名
 
+```
+SELECT s_id, s_name FROM student
+WHERE s_id IN (
+	SELECT s_id FROM score
+	GROUP BY s_id
+	HAVING COUNT(DISTINCT c_id)=2
+);
+
+/*或*/
+SELECT st.s_id, st.s_name
+FROM student st
+INNER JOIN score sc ON st.s_id=sc.s_id
+GROUP BY sc.s_id
+HAVING COUNT(DISTINCT sc.c_id)=2;
+```
+
 28、查询男生、女生人数
+
+```
+SELECT s_sex, COUNT(s_id) FROM student
+GROUP BY s_sex;
+
+/*或*/
+SELECT 
+SUM(CASE WHEN s_sex='男' THEN 1 ELSE 0 END) "男生人数",
+SUM(CASE WHEN s_sex='女' THEN 1 ELSE 0 END) "女生人数"
+FROM student;
+```
 
 29、查询名字中含有"风"字的学生信息
 
+```
+SELECT * FROM student WHERE s_name LIKE '%风%';
+```
+
 31、查询1990年出生的学生名单
+
+```
+SELECT * FROM student 
+WHERE year(s_birth)='1990';
+```
 
 32、查询平均成绩大于等于85的所有学生的学号、姓名和平均成绩
 
+```
+SELECT st.s_id, st.s_name, AVG(sc.s_score) 
+FROM student st
+INNER JOIN score sc ON st.s_id=sc.s_id
+GROUP BY st.s_id, st.s_name
+HAVING AVG(sc.s_score)>=85;
+```
+
 33、查询每门课程的平均成绩，结果按平均成绩升序排序，平均成绩相同时，按课程号降序排列
 
+```
+SELECT c.c_id, c.c_name, AVG(sc.s_score) avg_score
+FROM score sc
+INNER JOIN course c ON sc.c_id=c.c_id
+GROUP BY sc.c_id
+ORDER BY avg_score ASC, c.c_id DESC;
+```
+
 34、查询课程名称为"数学"，且分数低于60的学生姓名和分数
+
+```
+SELECT st.s_name, sc.s_score
+FROM student st, score sc, course c
+WHERE st.s_id=sc.s_id AND sc.c_id=c.c_id 
+AND c.c_name='数学'
+AND sc.s_score<=60;
+```
 
 35、查询所有学生的课程及分数情况
 >备注:<br>
@@ -430,34 +552,180 @@ ORDER BY avg_score DESC;
 >2.因为GROUP UP 要与select 列一致，所以case when 加修饰max<br>
 >3.因为最后要展现出每个同学的各科成绩为一行，所以用到case<br>
 
+```
+SELECT 
+st.s_id,
+st.s_name, 
+MAX(CASE WHEN c.c_name="数学" THEN sc.s_score ELSE null END) "数学成绩",
+MAX(CASE WHEN c.c_name="语文" THEN sc.s_score ELSE null END) "语文成绩",
+MAX(CASE WHEN c.c_name="英语" THEN sc.s_score ELSE null END) "英语成绩"
+FROM student st 
+INNER JOIN score sc ON st.s_id=sc.s_id
+INNER JOIN course c ON sc.c_id=c.c_id 
+GROUP BY st.s_id, st.s_name;
+```
+
 36、查询任何一门课程成绩在70分以上的姓名、课程名称和分数
+
+```
+SELECT st.s_name, c.c_name, sc.s_score
+FROM student st 
+INNER JOIN score sc ON st.s_id=sc.s_id
+INNER JOIN course c ON sc.c_id=c.c_id
+WHERE sc.s_score > 70;
+```
 
 37、查询不及格的课程并按课程号从大到小排列
 
+```
+SELECT st.s_name, c.c_name, sc.s_score
+FROM student st 
+INNER JOIN score sc ON st.s_id=sc.s_id
+INNER JOIN course c ON sc.c_id=c.c_id 
+WHERE sc.s_score<60
+ORDER BY c.c_id DESC;
+```
+
 38、查询课程编号为03且课程成绩在80分以上的学生的学号和姓名
+
+```
+SELECT st.s_id, st.s_name, c.c_name, sc.s_score
+FROM student st 
+INNER JOIN score sc ON st.s_id=sc.s_id
+INNER JOIN course c ON sc.c_id=c.c_id 
+WHERE c.c_id='03' AND sc.s_score>80;
+```
 
 39、求每门课程的学生人数
 
+```
+SELECT c_id, COUNT(DISTINCT s_id) FROM score
+GROUP BY c_id;
+```
+
 40、查询选修“张三”老师所授课程的学生中成绩最高的学生姓名及其成绩
 
-41.查询不同课程成绩相同的学生的学生编号、课程编号、学生成绩
+```
+SELECT st.s_name, sc.s_score 
+FROM student st
+INNER JOIN score sc ON st.s_id=sc.s_id
+INNER JOIN course c ON c.c_id=sc.c_id
+INNER JOIN teacher te ON te.t_id=c.t_id
+WHERE te.t_name='张三'
+ORDER BY sc.s_score DESC
+LIMIT 0,1;
+```
 
-42、查询每门功成绩最好的前两名
+41.查询某个学生不同课程但成绩相同的学生编号、课程编号、学生成绩
+>这里两张score表inner join关联,取交集, 其实结果就是一张表的结果<br>
+>为了能和自己的课程成绩比较, 所以用到了两张相同的表<br>
+```
+SELECT DISTINCT sc1.s_id, sc1.c_id, sc1.s_score
+FROM score sc1
+INNER JOIN score sc2 ON sc1.s_id=sc2.s_id
+WHERE sc1.s_score=sc2.s_score AND sc1.c_id != sc2.c_id;
+```
+
+42、查询每门课程成绩最好的前两名
+
+```
+SELECT * FROM
+	(SELECT 
+	 st.s_name,
+	 c.c_name,
+	 sc.s_score,
+	 row_number() OVER(partition BY c.c_id ORDER BY sc.s_score DESC) num
+	FROM student st
+	INNER JOIN score sc ON st.s_id=sc.s_id
+	INNER JOIN course c ON sc.c_id=c.c_id) a
+WHERE num <= 2;
+```
 
 43、统计每门课程的学生选修人数（超过5人的课程才统计）。要求输出课程号和选修人数，查询结果按人数降序排列，若人数相同，按课程号升序排列
 
+```
+SELECT 
+ c_id,
+ CASE WHEN COUNT(DISTINCT s_id)>5 THEN COUNT(DISTINCT s_id) ELSE null END
+ FROM score
+GROUP BY c_id
+ORDER BY COUNT(s_id) ASC, c_id DESC;
+/*或*/
+SELECT c_id, COUNT(s_id)
+ FROM score
+GROUP BY c_id
+HAVING COUNT(s_id)>5 
+ORDER BY COUNT(s_id) ASC, c_id DESC;
+```
+
 44、检索至少选修两门课程的学生学号
+
+```
+SELECT s_id FROM score
+GROUP BY s_id
+HAVING COUNT(c_id)>=2;
+```
 
 45、 查询选修了全部课程的学生信息
 
+```
+SELECT st.s_id, st.s_name, COUNT(DISTINCT c_id)
+FROM score sc, student st
+WHERE sc.s_id=st.s_id
+GROUP BY st.s_id
+HAVING COUNT(DISTINCT c_id)=(SELECT COUNT(c_id) FROM course);
+```
+
+
 46、查询没学过“张三”老师讲授的任一门课程的学生姓名
 
-47、查询两门以上不及格课程的同学的学号及其平均成绩
+```
+SELECT * FROM student
+WHERE s_id NOT IN
+	(
+	SELECT DISTINCT st.s_id 
+	FROM student st, score sc, teacher te, course c
+	WHERE st.s_id=sc.s_id
+	AND c.t_id=te.t_id
+	AND te.t_name='张三'
+	);
+```
+
+47、查询两门以上不及格课程的同学的学号, 姓名及其平均成绩
+
+```
+SELECT st.s_id, st.s_name, AVG(sc.s_score)
+FROM student st 
+INNER JOIN score sc ON st.s_id=sc.s_id
+WHERE sc.s_score<60
+GROUP BY st.s_id, st.s_name
+HAVING COUNT(DISTINCT c_id)>=2;
+```
 
 48、查询各学生的年龄
->备注：年份转换成月份，比如结果是1.9，ditediff 最后取1年
+> mysql中 datadiff()返回的是两个日期的天数
+
+```
+SELECT 
+s_id, 
+s_birth,
+DATEDIFF(CURDATE(), s_birth)/365
+FROM student;
+```
 
 49、查询本月过生日的学生(无法使用week、date(now()）
 >以下函数无法在SQL server中使用 所以截取标准答案（MySQL）
+```
+SELECT *
+FROM student
+WHERE week(s_birth, 1) = week(DATE(NOW()), 1);
+```
+
 
 50、查询下月过生日的学生
+
+```
+SELECT *
+FROM student
+WHERE week(s_birth, 1) = week(DATE(NOW()), 1)+1;
+```
