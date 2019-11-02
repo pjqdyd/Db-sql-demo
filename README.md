@@ -10,8 +10,8 @@
 完成;
 
 表结构关系:
-<div style="width: 300px; height: 200px;">
-	<image style="width: 300px; height: 200px;" src="https://pic1.zhimg.com/80/v2-86fd263583a6cead51675982c1735e68_hd.jpg" />
+<div align="left">
+	<img width="300px" height="200px" src="https://pic1.zhimg.com/80/v2-86fd263583a6cead51675982c1735e68_hd.jpg" />
 </div>
 
 
