@@ -296,26 +296,111 @@ GROUP BY st.s_id, st.s_name;
 16、检索"01"课程分数小于60，按分数降序排列的学生信息
 
 ```
+SELECT * FROM student st
+INNER JOIN score sc ON sc.s_id=st.s_id
+WHERE sc.s_score<60 AND sc.c_id='01'
+ORDER BY sc.s_score DESC;
 ```
 
 17、按平均成绩从高到低显示所有学生的所有课程的成绩以及平均成绩
 
 >备注：<br>
->1.因为要选出需要的字段 用case when 当c_id='01' then 可以得到对应的 s_core<br>
->2.因为GROUP UP 要与select 列一致，所以case when 加修饰max<br>
->3.因为最后要展现出每个同学的各科成绩为一行，所以用到case<br>
+>1.因为要选出需要的字段 用case when 当c_id='01' then 可以得到对应课程的s_core和课程名<br>
+>2.因为GROUP BY 要与select 列一致，所以用统计函数MAX加case when, 得到课程分数列<br>
+>3.因为每科成绩只有一个, 所以MAX取到的是最高成绩, 就是单科成绩<br>
+
+```
+SELECT s_id "学号",
+MAX(CASE WHEN c_id='01' THEN s_score ELSE null END) "语文",
+MAX(CASE WHEN c_id='02' THEN s_score ELSE null END) "数学",
+MAX(CASE WHEN c_id='03' THEN s_score ELSE null END) "英语",
+AVG(s_score) "平均成绩"
+FROM score
+GROUP BY s_id
+ORDER BY AVG(s_score) DESC;
+
+/** 结果 **/
+学号 语文 数学 英语  平均成绩
+07	null  89   98	93.5000
+01	80	  90   99	89.6667
+05	76	  87   null	81.5000
+03	80	  80   80	80.0000
+02	70	  60   80	70.0000
+04	50	  30   20	33.3333
+06	31	  null 34	32.5000
+```
 
 18、 查询各科成绩最高分、最低分和平均分：以如下形式显示：课程ID，课程name，最高分，最低分，平均分，及格率，中等率，优良率，优秀率
 
 --及格为>=60，中等为：70-80，优良为：80-90，优秀为：>=90
 
+```
+SELECT
+ sc.c_id "学号",
+ c.c_name "课程",
+ MAX(sc.s_score) "最高成绩",
+ MIN(sc.s_score) "最低成绩",
+ AVG(sc.s_score) "平均成绩",
+ SUM(CASE WHEN sc.s_score>=60 THEN 1 ELSE 0 END)/COUNT(s_id) "及格率",
+ SUM(CASE WHEN sc.s_score>=70 AND sc.s_score<80 THEN 1 ELSE 0 END)/COUNT(s_id) "中等率",
+ SUM(CASE WHEN sc.s_score>=80 AND sc.s_score<90 THEN 1 ELSE 0 END)/COUNT(s_id) "优良率",
+ SUM(CASE WHEN sc.s_score>=90 THEN 1 ELSE 0 END)/COUNT(s_id) "优秀率"
+FROM score sc
+INNER JOIN course c ON sc.c_id=c.c_id
+GROUP BY sc.c_id;
+
+/**注意sql server中应该是THEN 1.0 ELSE O.O**/
+/** 结果 **/
+学号 课程 最高成绩 最低成绩 平均成绩   及格率   中等率   优良率  优秀率
+01 	 语文	80     31	  64.5000	0.6667	 0.3333	 0.3333	 0.0000
+02	 数学	90	   30	  72.6667	0.8333   0.0000	 0.5000	 0.1667
+03	 英语	99	   20	  68.5000	0.6667	 0.0000	 0.3333	 0.3333
+
+```
+
 19、按各科成绩进行排序，并显示排名
+
+```
+SELECT *, row_number() over(partition by c_id ORDER BY s_score DESC) 
+FROM score;
+
+/**窗口函数使用参考:https://yq.aliyun.com/articles/593698**/
+```
 
 20、查询学生的总成绩并进行排名
 
+```
+SELECT st.s_id, st.s_name, SUM(sc.s_score),
+row_number() OVER(ORDER BY SUM(sc.s_score) DESC)
+FROM student st
+INNER JOIN score sc ON st.s_id=sc.s_id
+GROUP BY st.s_id, st.s_name;
+```
+
 21 、查询不同老师所教不同课程平均分从高到低显示
 
+```
+/**以课程为主**/
+SELECT c.c_id, c.c_name, AVG(s_score) as avg_score
+FROM score sc
+INNER JOIN course c ON sc.c_id=c.c_id
+GROUP BY sc.c_id
+ORDER BY avg_score DESC;
+
+/**以老师为主**/
+SELECT t.t_id, t.t_name, AVG(sc.s_score) as avg_score 
+FROM score sc
+INNER JOIN course c ON sc.c_id=c.c_id
+INNER JOIN teacher t ON c.t_id=t.t_id
+GROUP BY t.t_id, t.t_name
+ORDER BY avg_score DESC;
+```
+
 22、查询所有课程的成绩第2名到第3名的学生信息及该课程成绩
+
+```
+
+```
 
 23、使用分段[100-85],[85-70],[70-60],[<60]来统计各科成绩，分别统计各分数段人数：课程ID和课程名称
 
